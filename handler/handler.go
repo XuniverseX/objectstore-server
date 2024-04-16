@@ -52,7 +52,8 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		//更新hash与fileMetas
 		fileMeta.Hash = util.FileMd5(newFile)
-		meta.UpdateFileMeta(fileMeta)
+		//meta.UpdateFileMeta(fileMeta)
+		meta.UpdateFileMetaToDB(fileMeta)
 
 		http.Redirect(w, r, "/file/upload/suc", http.StatusFound)
 
