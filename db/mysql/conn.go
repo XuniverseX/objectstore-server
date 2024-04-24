@@ -10,7 +10,7 @@ import (
 var db *sql.DB
 
 func init() {
-	db, _ = sql.Open("mysql", "root:root@tcp(127.0.0.1:3307)/fileserver?charset=utf8mb4")
+	db, _ = sql.Open("mysql", "root:111111@tcp(localhost:3307)/fileserver?charset=utf8mb4")
 	db.SetMaxIdleConns(1000)
 	err := db.Ping()
 	if err != nil {

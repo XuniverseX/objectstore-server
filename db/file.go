@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
 	mysqlDB "objectstore-server/db/mysql"
 )
@@ -9,8 +10,8 @@ import (
 func OnFileUploadFinished(filehash string, filename string,
 	filesize int64, fileaddr string) bool {
 	stmt, err := mysqlDB.DBConn().Prepare(
-		"insert ignore into tbl_file(`file_hash`,`file_name`,`filesize`," +
-			"`fileaddr`,`status`) values (?,?,?,?,1)")
+		"insert ignore into tbl_file(`file_hash`,`file_name`,`file_size`," +
+			"`file_addr`,`status`) values (?,?,?,?,1)")
 	if err != nil {
 		fmt.Println("Failed to prepare statement,", err)
 		return false
@@ -31,4 +32,32 @@ func OnFileUploadFinished(filehash string, filename string,
 		return true
 	}
 	return false
+}
+
+type TableFileDTO struct {
+	FileHash string
+	FileName sql.NullString
+	FileSize sql.NullInt64
+	FileAddr sql.NullString
+}
+
+// GetFileMeta 从mysql获取元数据
+func GetFileMeta(filehash string) (*TableFileDTO, error) {
+	stmt, err := mysqlDB.DBConn().Prepare("select file_hash, file_name, file_size, file_addr" +
+		" from tbl_file where file_hash=? and status=1 limit 1")
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	tfile := TableFileDTO{}
+	err = stmt.QueryRow(filehash).Scan(
+		&tfile.FileHash, &tfile.FileName, &tfile.FileSize, &tfile.FileAddr)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	defer stmt.Close()
+
+	return &tfile, nil
 }

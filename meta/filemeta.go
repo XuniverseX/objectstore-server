@@ -32,6 +32,22 @@ func GetFileMeta(hash string) FileMeta {
 	return fileMetas[hash]
 }
 
+// GetFileMetaFromDB 从mysql获取文件元信息
+func GetFileMetaFromDB(hash string) (FileMeta, error) {
+	tfile, err := mysqlDb.GetFileMeta(hash)
+	if err != nil {
+		return FileMeta{}, err
+	}
+
+	fmeta := FileMeta{
+		Hash:     tfile.FileHash,
+		FileName: tfile.FileName.String,
+		FileSize: tfile.FileSize.Int64,
+		Location: tfile.FileAddr.String,
+	}
+	return fmeta, nil
+}
+
 // RemoveFileMeta 删除文件元信息
 func RemoveFileMeta(hash string) {
 	delete(fileMetas, hash)
