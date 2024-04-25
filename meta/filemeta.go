@@ -1,6 +1,6 @@
 package meta
 
-import mysqlDb "objectstore-server/db"
+import dblayer "objectstore-server/db"
 
 // FileMeta 文件元信息结构
 type FileMeta struct {
@@ -24,7 +24,7 @@ func UpdateFileMeta(meta FileMeta) {
 
 // UpdateFileMetaToDB 新增/更新文件元信息到数据库
 func UpdateFileMetaToDB(meta FileMeta) bool {
-	return mysqlDb.OnFileUploadFinished(meta.Hash, meta.FileName, meta.FileSize, meta.Location)
+	return dblayer.OnFileUploadFinished(meta.Hash, meta.FileName, meta.FileSize, meta.Location)
 }
 
 // GetFileMeta 通过hash获取文件的元信息对象
@@ -34,7 +34,7 @@ func GetFileMeta(hash string) FileMeta {
 
 // GetFileMetaFromDB 从mysql获取文件元信息
 func GetFileMetaFromDB(hash string) (FileMeta, error) {
-	tfile, err := mysqlDb.GetFileMeta(hash)
+	tfile, err := dblayer.GetFileMeta(hash)
 	if err != nil {
 		return FileMeta{}, err
 	}

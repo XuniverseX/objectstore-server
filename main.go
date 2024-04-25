@@ -14,6 +14,8 @@ func main() {
 	http.HandleFunc("POST /file/update", handler.FileMetaUpdateHandler)
 	http.HandleFunc("/file/delete", handler.FileDeleteHandler)
 
+	http.HandleFunc("/user/signup", handler.SignupHandler)
+
 	err := http.ListenAndServe(":8888", nil)
 	if err != nil {
 		fmt.Println("Failed to start server,", err)
