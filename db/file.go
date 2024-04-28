@@ -3,13 +3,13 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	mysqlDB "objectstore-server/db/mysql"
+	mdb "objectstore-server/db/mysql"
 )
 
 // OnFileUploadFinished 文件上传成功，保存元数据
 func OnFileUploadFinished(filehash string, filename string,
 	filesize int64, fileaddr string) bool {
-	stmt, err := mysqlDB.DBConn().Prepare(
+	stmt, err := mdb.DBConn().Prepare(
 		"insert ignore into tbl_file(`file_hash`,`file_name`,`file_size`," +
 			"`file_addr`,`status`) values (?,?,?,?,1)")
 	if err != nil {
@@ -43,7 +43,7 @@ type TableFileDTO struct {
 
 // GetFileMeta 从mysql获取元数据
 func GetFileMeta(filehash string) (*TableFileDTO, error) {
-	stmt, err := mysqlDB.DBConn().Prepare("select file_hash, file_name, file_size, file_addr" +
+	stmt, err := mdb.DBConn().Prepare("select file_hash, file_name, file_size, file_addr" +
 		" from tbl_file where file_hash=? and status=1 limit 1")
 	if err != nil {
 		fmt.Println(err)
