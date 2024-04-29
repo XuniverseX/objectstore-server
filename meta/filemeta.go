@@ -14,6 +14,9 @@ type FileMeta struct {
 var fileMetas map[string]FileMeta
 
 func init() {
+	if fileMetas != nil {
+		return
+	}
 	fileMetas = make(map[string]FileMeta)
 }
 
@@ -33,13 +36,13 @@ func GetFileMeta(hash string) FileMeta {
 }
 
 // GetFileMetaFromDB 从mysql获取文件元信息
-func GetFileMetaFromDB(hash string) (FileMeta, error) {
+func GetFileMetaFromDB(hash string) (*FileMeta, error) {
 	tfile, err := dblayer.GetFileMeta(hash)
 	if err != nil {
-		return FileMeta{}, err
+		return nil, err
 	}
 
-	fmeta := FileMeta{
+	fmeta := &FileMeta{
 		Hash:     tfile.FileHash,
 		FileName: tfile.FileName.String,
 		FileSize: tfile.FileSize.Int64,

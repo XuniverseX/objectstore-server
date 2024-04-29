@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	dblayer "objectstore-server/db"
 	"objectstore-server/meta"
 	"objectstore-server/util"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -51,11 +53,21 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//更新hash与fileMetas
+		newFile.Seek(0, 0)
 		fileMeta.Hash = util.FileSha1(newFile)
 		//meta.UpdateFileMeta(fileMeta)
 		meta.UpdateFileMetaToDB(fileMeta)
 
-		http.Redirect(w, r, "/file/upload/suc", http.StatusFound)
+		// 更新用户文件表记录
+		r.ParseForm()
+		username := r.Form.Get("username")
+		suc, _ := dblayer.OnUserFileUploadFinished(username, fileMeta.Hash,
+			fileMeta.FileName, fileMeta.FileSize)
+		if suc {
+			http.Redirect(w, r, "/static/view/home.html", http.StatusFound)
+		} else {
+			w.Write([]byte("Upload Failed"))
+		}
 
 	}
 }
@@ -82,6 +94,26 @@ func GetFileMetaHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.Write(data)
+}
+
+func FileQueryHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	username := r.Form.Get("username")
+	limitCnt, _ := strconv.Atoi(r.Form.Get("limit"))
+	userFiles, err := dblayer.QueryUserFileMetas(username, limitCnt)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	data, err := json.Marshal(userFiles)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.Write(data)
 }
 
@@ -151,4 +183,54 @@ func FileDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	meta.RemoveFileMeta(fHash)
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// TryFastUploadHandler 秒传接口
+func TryFastUploadHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+
+	// 解析请求参数
+	username := r.Form.Get("username")
+	filehash := r.Form.Get("filehash")
+	filename := r.Form.Get("filename")
+	filesize, err := strconv.Atoi(r.Form.Get("filesize"))
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// 从文件表中查询相同hash的记录
+	fileMeta, err := meta.GetFileMetaFromDB(filehash)
+	//if err != nil {
+	//	fmt.Println(err)
+	//	w.WriteHeader(http.StatusInternalServerError)
+	//	return
+	//}
+
+	// 查不到记录则返回秒传失败
+	if fileMeta == nil {
+		resp := util.RespMsg{
+			Code: -1,
+			Msg:  "秒传失败，请访问普通上传接口",
+		}
+		w.Write(resp.JSONBytes())
+		return
+	}
+
+	// 上传过则将文件信息写入用户文件表，返回成功
+	suc, err := dblayer.OnUserFileUploadFinished(username, filehash, filename, int64(filesize))
+	if suc {
+		resp := util.RespMsg{
+			Code: 0,
+			Msg:  "秒传成功",
+		}
+		w.Write(resp.JSONBytes())
+		return
+	}
+	resp := util.RespMsg{
+		Code: -2,
+		Msg:  "秒传失败，请稍后重试",
+	}
+	w.Write(resp.JSONBytes())
 }

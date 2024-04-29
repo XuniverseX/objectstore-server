@@ -49,15 +49,15 @@ func GetFileMeta(filehash string) (*TableFileDTO, error) {
 		fmt.Println(err)
 		return nil, err
 	}
+	defer stmt.Close()
 
 	tfile := TableFileDTO{}
 	err = stmt.QueryRow(filehash).Scan(
 		&tfile.FileHash, &tfile.FileName, &tfile.FileSize, &tfile.FileAddr)
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 		return nil, err
 	}
-	defer stmt.Close()
 
 	return &tfile, nil
 }
