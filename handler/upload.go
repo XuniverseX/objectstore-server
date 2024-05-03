@@ -61,7 +61,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 		newFile.Seek(0, 0)
 		//stat, _ := newFile.Stat()
 		//minioPath := "/minio/" + fileMeta.FileHash
-		//m.Client().PutObject(context.Background(), "userfile", minioPath, newFile, -1,
+		//m.Client().PutObject(context.Background(), "userfile", minioPath, newFile, stat.Size(),
 		//	minio.PutObjectOptions{ContentType: "application/octet-stream"})
 		//fileMeta.Location = minioPath
 
