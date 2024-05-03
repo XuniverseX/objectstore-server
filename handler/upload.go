@@ -7,6 +7,7 @@ import (
 	"net/http"
 	dblayer "objectstore-server/db"
 	"objectstore-server/meta"
+	"objectstore-server/store/oss"
 	"objectstore-server/util"
 	"os"
 	"strconv"
@@ -54,14 +55,32 @@ func UploadHandler(w http.ResponseWriter, r *http.Request) {
 
 		//更新hash与fileMetas
 		newFile.Seek(0, 0)
-		fileMeta.Hash = util.FileSha1(newFile)
+		fileMeta.FileHash = util.FileSha1(newFile)
+
+		//同时将文件写入到minio
+		newFile.Seek(0, 0)
+		//stat, _ := newFile.Stat()
+		//minioPath := "/minio/" + fileMeta.FileHash
+		//m.Client().PutObject(context.Background(), "userfile", minioPath, newFile, -1,
+		//	minio.PutObjectOptions{ContentType: "application/octet-stream"})
+		//fileMeta.Location = minioPath
+
+		ossPath := "oss/" + fileMeta.FileHash
+		err = oss.GetBucket().PutObject(ossPath, newFile)
+		if err != nil {
+			fmt.Println(err)
+			w.Write([]byte("Upload failed!"))
+			return
+		}
+		fileMeta.Location = ossPath
+
 		//meta.UpdateFileMeta(fileMeta)
 		meta.UpdateFileMetaToDB(fileMeta)
 
 		// 更新用户文件表记录
 		r.ParseForm()
 		username := r.Form.Get("username")
-		suc, _ := dblayer.OnUserFileUploadFinished(username, fileMeta.Hash,
+		suc, _ := dblayer.OnUserFileUploadFinished(username, fileMeta.FileHash,
 			fileMeta.FileName, fileMeta.FileSize)
 		if suc {
 			http.Redirect(w, r, "/static/view/home.html", http.StatusFound)
@@ -143,6 +162,32 @@ func FileDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application.octect-stream")
 	w.Header().Set("Content-Disposition", "attachment;filename=\""+fMeta.FileName+"\"")
 	w.Write(data)
+}
+
+// DownloadURLHandler 生成文件的下载地址
+func DownloadURLHandler(w http.ResponseWriter, r *http.Request) {
+	filehash := r.Form.Get("filehash")
+	// 从文件表查找记录
+	row, _ := dblayer.GetFileMeta(filehash)
+
+	// oss下载url
+	signedURL := oss.GetDownloadUrl(row.FileAddr.String)
+	w.Write([]byte(signedURL))
+
+	// TODO: 判断文件存在OSS，还是Ceph，还是在本地
+	//if strings.HasPrefix(row.FileAddr.String, "/tmp") {
+	//	username := r.Form.Get("username")
+	//	token := r.Form.Get("token")
+	//	tmpUrl := fmt.Sprintf("http://%s/file/download?filehash=%s&username=%s&token=%s",
+	//		r.Host, filehash, username, token)
+	//	w.Write([]byte(tmpUrl))
+	//} else if strings.HasPrefix(row.FileAddr.String, "/ceph") {
+	//	// TODO: ceph下载url
+	//} else if strings.HasPrefix(row.FileAddr.String, "oss/") {
+	//	// oss下载url
+	//	signedURL := oss.GetDownloadUrl(row.FileAddr.String)
+	//	w.Write([]byte(signedURL))
+	//}
 }
 
 // FileMetaUpdateHandler 文件重命名接口
