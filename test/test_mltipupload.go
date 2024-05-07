@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"bufio"
@@ -82,7 +82,7 @@ func main() {
 
 	// 请求初始化分块上传接口
 	resp, err := http.PostForm(
-		"http://localhost:8888/file/mpupload/init",
+		"http://localhost:8080/file/mpupload/init",
 		url.Values{
 			"username": {username},
 			"token":    {token},
@@ -109,13 +109,13 @@ func main() {
 
 	// 请求分块上传接口
 	filename := "/Users/xuni/Downloads/eudicmac.dmg"
-	tURL := "http://localhost:8888/file/mpupload/uppart?" +
+	tURL := "http://localhost:8080/file/mpupload/uppart?" +
 		"username=admin&token=" + token + "&uploadid=" + uploadID
 	multipartUpload(filename, tURL, chunkSize)
 
 	// 请求分块完成接口
 	resp, err = http.PostForm(
-		"http://localhost:8888/file/mpupload/complete",
+		"http://localhost:8080/file/mpupload/complete",
 		url.Values{
 			"username": {username},
 			"token":    {token},

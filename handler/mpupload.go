@@ -2,8 +2,8 @@ package handler
 
 import (
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/gomodule/redigo/redis"
-	"log"
 	"math"
 	"net/http"
 	rPool "objectstore-server/cache/redis"
@@ -30,14 +30,15 @@ type MultipartUploadInfo struct {
 }
 
 // InitialMultipartUploadHandler 初始化分块上传接口
-func InitialMultipartUploadHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	username := r.Form.Get("username")
-	filehash := r.Form.Get("filehash")
-	filesize, err := strconv.Atoi(r.Form.Get("filesize"))
+func InitialMultipartUploadHandler(c *gin.Context) {
+	username := c.Request.FormValue("username")
+	filehash := c.Request.FormValue("filehash")
+	filesize, err := strconv.Atoi(c.Request.FormValue("filesize"))
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "params invalid",
+		})
 		return
 	}
 
@@ -58,15 +59,15 @@ func InitialMultipartUploadHandler(w http.ResponseWriter, r *http.Request) {
 	conn.Do("HSET", "MP_"+info.UploadID, "filehash", info.FileHash)
 	conn.Do("HSET", "MP_"+info.UploadID, "filesize", info.FileSize)
 
-	w.Write(util.NewRespMsg(0, "OK", info).JSONBytes())
+	resp := util.NewRespMsg(0, "OK", info)
+	c.Data(http.StatusOK, "", resp.JSONBytes())
 }
 
 // UploadPartHandler 上传文件分块接口
-func UploadPartHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+func UploadPartHandler(c *gin.Context) {
 	//	username := r.Form.Get("username")
-	uploadID := r.Form.Get("uploadid")
-	chunkIndex := r.Form.Get("index")
+	uploadID := c.Request.FormValue("uploadid")
+	chunkIndex := c.Request.FormValue("index")
 
 	conn := rPool.RedisPool().Get()
 	defer conn.Close()
@@ -76,14 +77,18 @@ func UploadPartHandler(w http.ResponseWriter, r *http.Request) {
 	os.MkdirAll(path.Dir(fpath), 0744)
 	fd, err := os.Create(fpath)
 	if err != nil {
-		w.Write(util.NewRespMsg(-1, "Upload part failed", nil).JSONBytes())
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+			"msg":  "Upload part failed",
+			"data": nil,
+		})
 		return
 	}
 	defer fd.Close()
 
 	buf := make([]byte, 1024*1024)
 	for {
-		n, err := r.Body.Read(buf)
+		n, err := c.Request.Body.Read(buf)
 		fd.Write(buf[:n])
 		if err != nil {
 			break
@@ -92,17 +97,21 @@ func UploadPartHandler(w http.ResponseWriter, r *http.Request) {
 	// 更新redis缓存状态
 	conn.Do("HSET", "MP_"+uploadID, "chkidx_"+chunkIndex, 1)
 
-	w.Write(util.NewRespMsg(0, "OK", nil).JSONBytes())
+	c.JSON(
+		http.StatusOK, gin.H{
+			"code": 0,
+			"msg":  "OK",
+			"data": nil,
+		})
 }
 
 // CompleteUploadHandler 通知上传合并
-func CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	uploadId := r.Form.Get("uploadid")
-	username := r.Form.Get("username")
-	fileHash := r.Form.Get("filehash")
-	filesize := r.Form.Get("filesize")
-	filename := r.Form.Get("filename")
+func CompleteUploadHandler(c *gin.Context) {
+	uploadId := c.Request.FormValue("uploadid")
+	username := c.Request.FormValue("username")
+	fileHash := c.Request.FormValue("filehash")
+	filesize := c.Request.FormValue("filesize")
+	filename := c.Request.FormValue("filename")
 
 	conn := rPool.RedisPool().Get()
 	defer conn.Close()
@@ -110,7 +119,11 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 	// 通过uploadId查询redis并判断所有分块都上传完成
 	data, err := redis.Values(conn.Do("HGETALL", "MP_"+uploadId))
 	if err != nil {
-		w.Write(util.NewRespMsg(-1, "complete upload failed.", nil).JSONBytes())
+		c.JSON(http.StatusOK, gin.H{
+			"code": -1,
+			"msg":  "Complete upload failed.",
+			"data": nil,
+		})
 	}
 	totalCount := 0
 	chunkCount := 0
@@ -126,16 +139,25 @@ func CompleteUploadHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if totalCount != chunkCount {
-		w.Write(util.NewRespMsg(-2, "invalid request", nil).JSONBytes())
+		c.JSON(http.StatusOK, gin.H{
+			"code": -2,
+			"msg":  "invalid request",
+			"data": nil,
+		})
 		return
 	}
 	// todo 分块合并
+
 	// 更新文件表和用户文件表
 	fsize, _ := strconv.Atoi(filesize)
 	dblayer.OnFileUploadFinished(fileHash, filename, int64(fsize), "")
 	dblayer.OnUserFileUploadFinished(username, fileHash, filename, int64(fsize))
 
 	// 6. 响应处理结果
-	w.Write(util.NewRespMsg(0, "OK", nil).JSONBytes())
+	c.JSON(http.StatusOK, gin.H{
+		"code": 0,
+		"msg":  "OK",
+		"data": nil,
+	})
 	// 响应
 }

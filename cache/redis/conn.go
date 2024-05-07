@@ -1,8 +1,8 @@
 package redis
 
 import (
-	"fmt"
 	"github.com/gomodule/redigo/redis"
+	"log"
 	"time"
 )
 
@@ -29,7 +29,7 @@ func newRedisPool() *redis.Pool {
 			// 打开连接
 			dial, err := redis.Dial("tcp", redisHost)
 			if err != nil {
-				fmt.Println(err)
+				log.Println(err)
 				return nil, err
 			}
 			// 访问认证

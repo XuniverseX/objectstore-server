@@ -24,8 +24,8 @@ func Client() *oss.Client {
 	return ossCli
 }
 
-// GetBucket 获取bucket
-func GetBucket() *oss.Bucket {
+// Bucket 获取bucket
+func Bucket() *oss.Bucket {
 	cli := Client()
 	if cli == nil {
 		return nil
@@ -38,9 +38,9 @@ func GetBucket() *oss.Bucket {
 	return bucket
 }
 
-// GetDownloadUrl 临时授权下载url
-func GetDownloadUrl(objName string) string {
-	signedURL, err := GetBucket().SignURL(objName, oss.HTTPGet, 3600)
+// DownloadURL 临时授权下载url
+func DownloadURL(objName string) string {
+	signedURL, err := Bucket().SignURL(objName, oss.HTTPGet, 3600)
 	if err != nil {
 		fmt.Println(err)
 		return ""

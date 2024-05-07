@@ -1,9 +1,9 @@
 package minio
 
 import (
-	"fmt"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"log"
 	cfg "objectstore-server/config"
 )
 
@@ -17,7 +17,7 @@ func Client() *minio.Client {
 		Secure: cfg.UseSSL,
 	})
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
 	minioClient = c

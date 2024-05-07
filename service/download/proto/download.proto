@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package="./;proto";
+
+service DownloadService {
+    // 获取下载入口地址
+    rpc DownloadEntry(DownloadReqEntry) returns (DownloadRespEntry) {}
+}
+
+message DownloadReqEntry {
+}
+
+message DownloadRespEntry {
+    int32 code = 1;
+    string message = 2;
+    string entry = 3;
+}

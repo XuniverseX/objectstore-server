@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"log"
 	mdb "objectstore-server/db/mysql"
 	"time"
@@ -16,22 +17,22 @@ type UserFile struct {
 }
 
 // OnUserFileUploadFinished 上传完成时插入用户文件表
-func OnUserFileUploadFinished(username, fileHash, fileName string, fileSize int64) (bool, error) {
+func OnUserFileUploadFinished(username, fileHash, fileName string, fileSize int64) bool {
 	stmt, err := mdb.DBConn().Prepare(
 		"insert into tbl_user_file(`user_name`,`file_hash`,`file_name`," +
 			"`file_size`, `upload_at`) values (?,?,?,?,?)",
 	)
 	if err != nil {
 		log.Println(err)
-		return false, err
+		return false
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(username, fileHash, fileName, fileSize, time.Now())
 	if err != nil {
 		log.Println(err)
-		return false, err
+		return false
 	}
-	return true, nil
+	return true
 }
 
 // QueryUserFileMetas 获取用户文件表元数据
@@ -59,4 +60,32 @@ func QueryUserFileMetas(username string, limit int) ([]UserFile, error) {
 		userFiles = append(userFiles, userFile)
 	}
 	return userFiles, nil
+}
+
+// QueryUserFileMeta 获取用户单个文件信息
+func QueryUserFileMeta(username string, filehash string) (*UserFile, error) {
+	stmt, err := mdb.DBConn().Prepare(
+		"select file_sha1,file_name,file_size,upload_at," +
+			"last_update from tbl_user_file where user_name=? and file_sha1=?  limit 1")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(username, filehash)
+	if err != nil {
+		return nil, err
+	}
+
+	ufile := UserFile{}
+	if rows.Next() {
+		err = rows.Scan(&ufile.FileHash, &ufile.FileName, &ufile.FileSize,
+			&ufile.UploadAt, &ufile.LastUpdated)
+		if err != nil {
+			fmt.Println(err.Error())
+			return nil, err
+		}
+	}
+
+	return &ufile, nil
 }

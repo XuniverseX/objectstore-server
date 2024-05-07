@@ -1,9 +1,9 @@
-package main
+package test
 
 import (
 	"context"
-	"fmt"
 	"github.com/minio/minio-go/v7"
+	"log"
 	m "objectstore-server/store/minio"
 	"os"
 )
@@ -16,18 +16,18 @@ func main() {
 
 	//err := cli.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 	//if err != nil {
-	//	fmt.Println(err)
+	//	log.Println(err)
 	//}
 
 	objInfo, err := cli.StatObject(ctx, bucketName, objectName, minio.StatObjectOptions{})
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
-	fmt.Printf("%+v\n", objInfo.Key)
+	log.Printf("%+v\n", objInfo.Key)
 
 	file, err := os.Open("/Users/xuni/Downloads/Hearthstone-Setup.zip")
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	defer file.Close()
 	//UserMeta := map[string]string{
@@ -35,20 +35,20 @@ func main() {
 	//}
 	fileStat, err := file.Stat()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	size := fileStat.Size()
 	uploadInfo, err := cli.PutObject(ctx, bucketName, objectName, file, size,
 		minio.PutObjectOptions{ContentType: "application/octet-stream"})
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 
-	fmt.Println("Successfully uploaded bytes:", uploadInfo)
+	log.Println("Successfully uploaded bytes:", uploadInfo)
 
 	objInfo1, err := cli.StatObject(ctx, bucketName, objectName, minio.StatObjectOptions{})
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
-	fmt.Printf("%+v\n", objInfo1.Key)
+	log.Printf("%+v\n", objInfo1.Key)
 }
